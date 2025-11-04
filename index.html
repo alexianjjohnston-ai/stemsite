@@ -1,0 +1,2236 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stem Lab — Browser Stem Mixer</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f6f4;
+        --surface: rgba(255, 255, 255, 0.92);
+        --surface-solid: #ffffff;
+        --border: rgba(17, 17, 17, 0.08);
+        --text: #111111;
+        --subtle: #6f6f6f;
+        --muted: #8f8f8f;
+        --accent: #111111;
+        --accent-contrast: #ffffff;
+        --radius: 18px;
+        --shadow: 0 24px 48px -32px rgba(15, 15, 15, 0.18);
+        --transition: 200ms ease;
+        font-family: "Helvetica Neue", "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 48px 16px 80px;
+      }
+
+      .top-nav {
+        width: min(1100px, 100%);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 32px;
+        color: var(--subtle);
+      }
+
+      .brand {
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      .icon-bar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        font-size: 0.85rem;
+      }
+
+      .icon-bar button {
+        border-radius: 999px;
+        border: 1px solid var(--text);
+        padding: 8px 16px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        background: transparent;
+        color: var(--text);
+        cursor: pointer;
+        transition: background var(--transition), color var(--transition);
+      }
+
+      .icon-bar button:hover {
+        background: var(--text);
+        color: var(--accent-contrast);
+      }
+
+      main {
+        width: min(960px, 100%);
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+      }
+
+      header {
+        text-align: center;
+        padding: 0 12px 12px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2.3rem, 5vw, 3.4rem);
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+
+      .upload-area {
+        background: var(--surface-solid);
+        border: 1px solid var(--border);
+        border-radius: 26px;
+        padding: 44px;
+        position: relative;
+        text-align: center;
+        transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
+        cursor: pointer;
+      }
+
+      .upload-area:hover,
+      .upload-area.dragging {
+        border-color: var(--text);
+        transform: translateY(-3px);
+        box-shadow: var(--shadow);
+      }
+
+      .upload-area input[type="file"] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      .upload-area strong {
+        display: block;
+        font-size: 1.25rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+      }
+
+      .upload-area span {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .upload-area code {
+        background: rgba(17, 17, 17, 0.05);
+        border-radius: 6px;
+        padding: 2px 6px;
+        font-size: 0.8rem;
+        color: var(--text);
+      }
+
+      .status {
+        border: 1px solid var(--border);
+        background: var(--surface-solid);
+        border-radius: var(--radius);
+        padding: 18px 24px;
+        display: none;
+        align-items: center;
+        gap: 18px;
+        font-size: 0.82rem;
+        min-height: 52px;
+      }
+
+      .status.show {
+        display: flex;
+      }
+
+      .status .label {
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--subtle);
+        font-size: 0.7rem;
+        white-space: nowrap;
+      }
+
+      .status .progress {
+        flex: 1;
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(17, 17, 17, 0.08);
+        overflow: hidden;
+      }
+
+      .status .progress span {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: #111111;
+        transition: width 180ms ease-out;
+      }
+
+      .player {
+        background: var(--surface-solid);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 24px;
+        display: none;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      .player.show {
+        display: flex;
+      }
+
+      .player-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .player-controls button {
+        border-radius: 999px;
+        border: 1px solid var(--text);
+        padding: 12px 24px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        cursor: pointer;
+        background: transparent;
+        color: var(--text);
+        transition: background var(--transition), color var(--transition);
+      }
+
+      .player-controls button.primary {
+        background: var(--text);
+        color: var(--accent-contrast);
+      }
+
+      .player-controls button.secondary:hover {
+        background: rgba(17, 17, 17, 0.08);
+      }
+
+      .player-controls button.primary:hover {
+        background: #000000;
+      }
+
+      .timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .timeline label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--subtle);
+      }
+
+      .timeline input[type="range"] {
+        width: 100%;
+        appearance: none;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(17, 17, 17, 0.12);
+        outline: none;
+      }
+
+      .timeline input[type="range"]::-webkit-slider-thumb {
+        appearance: none;
+        height: 16px;
+        width: 16px;
+        border-radius: 50%;
+        background: var(--text);
+        cursor: pointer;
+      }
+
+      .stems-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 18px;
+      }
+
+      .stem-card {
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        background: var(--surface-solid);
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .stem-card h3 {
+        margin: 0;
+        font-size: 0.9rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+     .stem-card .slider label {
+        display: flex;
+        justify-items: space-between;
+        justify-content: space-between;
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--subtle);
+      }
+
+      .stem-card input[type="range"] {
+        width: 100%;
+        appearance: none;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(17, 17, 17, 0.12);
+      }
+
+      .stem-card input[type="range"]::-webkit-slider-thumb {
+        appearance: none;
+        height: 14px;
+        width: 14px;
+        border-radius: 50%;
+        background: var(--text);
+        cursor: pointer;
+      }
+
+      .stem-card .download {
+        align-self: flex-start;
+        border: 1px solid var(--text);
+        border-radius: 999px;
+        padding: 8px 18px;
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        background: transparent;
+        cursor: pointer;
+        transition: background var(--transition), color var(--transition);
+      }
+
+      .stem-card .download:hover {
+        background: var(--text);
+        color: var(--accent-contrast);
+      }
+
+      .muted-message {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+        display: none;
+      }
+
+      .muted-message.show {
+        display: block;
+      }
+
+      .visualizer-wrapper {
+        width: 100%;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+        background: #ffffff;
+        height: 160px;
+      }
+
+      #visualizer {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .mix-controls {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 18px;
+        background: var(--surface-solid);
+      }
+
+      .mix-controls .control {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        position: relative;
+      }
+
+      .mix-controls .control label {
+        font-size: 0.75rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--subtle);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .mix-controls .control input[type="range"] {
+        width: 100%;
+        appearance: none;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(17, 17, 17, 0.12);
+        outline: none;
+      }
+
+      .mix-controls .control input[type="range"]::-webkit-slider-thumb {
+        appearance: none;
+        height: 14px;
+        width: 14px;
+        border-radius: 50%;
+        background: var(--text);
+        cursor: pointer;
+      }
+
+      .mix-controls .control.locked input[type="range"] {
+        opacity: 0.4;
+        pointer-events: none;
+      }
+
+      .mix-controls .control .lock-indicator {
+        font-size: 0.65rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+      }
+
+      .cookie-banner {
+        position: fixed;
+        bottom: 24px;
+        left: 24px;
+        width: min(340px, calc(100% - 48px));
+        background: var(--surface-solid);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        box-shadow: var(--shadow);
+        padding: 20px 22px;
+        display: none;
+        flex-direction: column;
+        gap: 14px;
+        z-index: 20;
+      }
+
+      .cookie-banner.show {
+        display: flex;
+      }
+
+      .cookie-banner h2 {
+        margin: 0;
+        font-size: 1rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .cookie-banner p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .cookie-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .cookie-actions button {
+        flex: 1;
+        border-radius: 999px;
+        border: 1px solid var(--text);
+        padding: 10px 16px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        cursor: pointer;
+        background: transparent;
+      }
+
+      .cookie-actions button.primary {
+        background: var(--text);
+        color: var(--accent-contrast);
+      }
+
+      .cookie-details {
+        display: none;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .cookie-details.show {
+        display: flex;
+      }
+
+      .cookie-details label {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 0.85rem;
+        color: var(--text);
+      }
+
+      .cookie-details input[type="checkbox"] {
+        accent-color: var(--text);
+      }
+
+      .cookie-details .save-preferences {
+        align-self: flex-end;
+        border: 1px solid var(--text);
+        background: transparent;
+        padding: 8px 16px;
+        border-radius: 999px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        cursor: pointer;
+      }
+
+      #settingsSheet {
+        position: fixed;
+        inset: 0;
+        background: rgba(246, 246, 244, 0.85);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 15;
+      }
+
+      #settingsSheet.show {
+        display: flex;
+      }
+      .library {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .library.locked {
+        opacity: 0.6;
+        position: relative;
+      }
+
+      .library.locked::after {
+        content: "Account required to access saved sessions";
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 0.7rem;
+        background: rgba(246, 246, 244, 0.9);
+        color: var(--subtle);
+      }
+
+      .library h2 {
+        margin: 0;
+        font-size: 0.9rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .library-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .library-empty {
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .library-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 12px 16px;
+        background: var(--surface-solid);
+      }
+
+      .library-item h3 {
+        margin: 0;
+        font-size: 0.85rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .library-item p {
+        margin: 4px 0 0;
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+
+      .library-item .meta {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .library-item a {
+        border-radius: 999px;
+        border: 1px solid var(--text);
+        padding: 8px 16px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        color: var(--text);
+        text-decoration: none;
+        transition: background var(--transition), color var(--transition);
+      }
+
+      .library-item a:hover {
+        background: var(--text);
+        color: var(--accent-contrast);
+      }
+
+      .library-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .library-actions button {
+        border-radius: 999px;
+        border: 1px solid var(--text);
+        padding: 8px 16px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        background: transparent;
+        cursor: pointer;
+        transition: background var(--transition), color var(--transition);
+      }
+
+      .library-actions button:hover {
+        background: var(--text);
+        color: var(--accent-contrast);
+      }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(246, 246, 244, 0.9);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 30;
+      }
+
+      .modal.show {
+        display: flex;
+      }
+
+      .account-card {
+        width: min(420px, calc(100% - 64px));
+        background: var(--surface-solid);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 28px;
+        box-shadow: var(--shadow);
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .account-card h2 {
+        margin: 0;
+        font-size: 1rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .account-card p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .account-card form {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .account-card label {
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--subtle);
+      }
+
+      .account-card input {
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        padding: 12px 14px;
+        font-size: 0.9rem;
+        background: #fbfbfa;
+        width: 100%;
+      }
+
+      .account-card .code-row {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .account-card .code-controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .account-card .code-controls button {
+        border-radius: 999px;
+        border: 1px solid var(--text);
+        padding: 10px 16px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        background: transparent;
+        cursor: pointer;
+        transition: background var(--transition), color var(--transition);
+      }
+
+      .account-card .code-controls button:hover {
+        background: var(--text);
+        color: var(--accent-contrast);
+      }
+
+      .account-message {
+        min-height: 1.2rem;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+
+      .account-message.error {
+        color: #b00020;
+      }
+
+      .account-message.success {
+        color: #0b6a2f;
+      }
+
+
+      .settings-card {
+        width: min(420px, calc(100% - 64px));
+        background: var(--surface-solid);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 28px;
+        box-shadow: var(--shadow);
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+      }
+
+      .settings-card h2 {
+        margin: 0;
+        font-size: 1rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .settings-card .section {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .settings-option {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        font-size: 0.85rem;
+        color: var(--subtle);
+      }
+
+      .settings-option span {
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+      }
+
+      .settings-option input[type="checkbox"] {
+        accent-color: var(--text);
+        width: 18px;
+        height: 18px;
+      }
+
+      .settings-card .actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+
+      .settings-card button {
+        border-radius: 999px;
+        border: 1px solid var(--text);
+        padding: 10px 18px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        background: transparent;
+        cursor: pointer;
+      }
+
+      .settings-card .primary {
+        background: var(--text);
+        color: var(--accent-contrast);
+      }
+
+      .account-card .actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+
+      .account-card button {
+        border-radius: 999px;
+        border: 1px solid var(--text);
+        padding: 10px 18px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        background: transparent;
+        cursor: pointer;
+      }
+
+      .account-card .primary {
+        background: var(--text);
+        color: var(--accent-contrast);
+      }
+
+      @media (max-width: 640px) {
+        .upload-area {
+          padding: 32px;
+        }
+
+        .stems-grid {
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="top-nav">
+      <span class="brand">Stem Lab</span>
+      <div class="icon-bar">
+        <button id="openSettingsButton" type="button">Settings</button>
+        <button id="openAccountButton" type="button">Sign in</button>
+      </div>
+    </nav>
+
+    <main>
+      <header>
+        <h1>Stem Lab</h1>
+      </header>
+
+      <label class="upload-area" id="dropZone">
+        <input type="file" id="fileInput" accept="audio/*,video/mp4,video/quicktime" />
+        <strong>Drop or browse your audio</strong>
+        <span>MP3, WAV, FLAC, AAC, OGG & more. Routed to <code id="endpointLabel"></code>.</span>
+      </label>
+
+      <div class="status" id="status">
+        <span class="label" id="statusLabel">Waiting for a file...</span>
+        <div class="progress"><span id="progressFill"></span></div>
+      </div>
+
+      <section class="player" id="player">
+        <div class="player-controls">
+          <button id="playButton" class="primary">Play</button>
+          <button id="pauseButton" class="secondary">Pause</button>
+          <button id="stopButton" class="secondary">Stop</button>
+          <button id="saveLibraryButton" class="secondary">Save to library</button>
+          <span class="muted-message" id="mutedMessage">All stems muted</span>
+        </div>
+        <div class="visualizer-wrapper">
+          <canvas id="visualizer" width="900" height="120"></canvas>
+        </div>
+        <div class="mix-controls">
+          <div class="control">
+            <label>Master Volume <span id="masterVolumeValue">100%</span></label>
+            <input type="range" id="masterVolume" min="0" max="1.4" step="0.01" value="1" />
+          </div>
+          <div class="control account-only" data-feature="tone-high">
+            <label>
+              <span>Brightness</span>
+              <span>
+                <span id="toneHighValue">0 dB</span>
+                <span class="lock-indicator">🔒 Account</span>
+              </span>
+            </label>
+            <input type="range" id="toneHigh" min="-12" max="12" step="0.5" value="0" disabled />
+          </div>
+          <div class="control account-only" data-feature="tone-low">
+            <label>
+              <span>Warmth</span>
+              <span>
+                <span id="toneLowValue">0 dB</span>
+                <span class="lock-indicator">🔒 Account</span>
+              </span>
+            </label>
+            <input type="range" id="toneLow" min="-12" max="12" step="0.5" value="0" disabled />
+          </div>
+        </div>
+        <div class="timeline">
+          <label>
+            <span id="currentTime">0:00</span>
+            <span id="duration">0:00</span>
+          </label>
+          <input type="range" id="seekSlider" min="0" max="1" step="0.001" value="0" disabled />
+        </div>
+        <div class="stems-grid" id="stemsGrid"></div>
+      </section>
+
+      <section class="library" id="librarySection">
+        <h2>Saved sessions</h2>
+        <div class="library-list" id="libraryList"></div>
+      </section>
+    </main>
+
+    <template id="stemTemplate">
+      <article class="stem-card">
+        <h3></h3>
+        <div class="slider">
+          <label>Volume <span class="value"></span></label>
+          <input type="range" min="0" max="1" step="0.01" />
+        </div>
+        <button class="download">Download stem</button>
+      </article>
+    </template>
+
+    <div id="settingsSheet" class="modal">
+      <div class="settings-card">
+        <h2>Settings</h2>
+        <div class="section">
+          <label class="settings-option" for="stemEndpointInput">
+            <span>Stem service endpoint</span>
+            <input
+              type="url"
+              id="stemEndpointInput"
+              placeholder="https://example.com/api/separate"
+              autocomplete="off"
+            />
+          </label>
+          <label class="settings-option">
+            <span>Auto play after split</span>
+            <input type="checkbox" id="autoPlayToggle" />
+          </label>
+        </div>
+        <div class="actions">
+          <button id="closeSettingsButton" type="button">Cancel</button>
+          <button id="saveSettingsButton" type="button" class="primary">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="cookieBanner" class="cookie-banner" hidden>
+      <h2>We use cookies</h2>
+      <p>
+        Cookies help us remember your stem service and improve Stem Lab. Choose “Accept all” to
+        enable analytics too.
+      </p>
+      <div class="cookie-actions">
+        <button id="acceptCookies" class="primary" type="button">Accept all</button>
+        <button id="manageCookies" type="button">Manage preferences</button>
+      </div>
+      <div id="cookieDetails" class="cookie-details">
+        <label>
+          <input type="checkbox" id="analyticsToggle" checked />
+          Enable analytics cookies
+        </label>
+        <button id="saveCookiePrefs" type="button" class="save-preferences">Save preferences</button>
+      </div>
+    </div>
+
+    <div id="accountSheet" class="modal">
+      <div class="account-card">
+        <h2 id="accountTitle">Create your account</h2>
+        <p id="accountDescription">
+          Three free splits. Make a free account to keep mixing and sync your saved sessions.
+        </p>
+        <form id="accountForm">
+          <label for="accountEmail">Email</label>
+          <input id="accountEmail" type="email" name="email" autocomplete="email" required />
+          <label for="accountName">Display name</label>
+          <input id="accountName" type="text" name="name" autocomplete="name" />
+          <label for="accountPassword">Password</label>
+          <input id="accountPassword" type="password" name="password" autocomplete="new-password" required minlength="8" />
+          <div class="code-row">
+            <label for="accountCode">Verification code</label>
+            <div class="code-controls">
+              <input id="accountCode" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" />
+              <button type="button" id="sendCodeButton">Send code</button>
+            </div>
+          </div>
+          <p class="account-message" id="accountMessage"></p>
+          <div class="actions">
+            <button id="accountSignOutButton" type="button" style="display:none">Sign out</button>
+            <button id="accountCancel" type="button">Cancel</button>
+            <button id="accountSubmitButton" type="submit" class="primary">Create account</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      const fileInput = document.getElementById("fileInput");
+      const dropZone = document.getElementById("dropZone");
+      const statusBox = document.getElementById("status");
+      const statusLabel = document.getElementById("statusLabel");
+      const progressFill = document.getElementById("progressFill");
+      const player = document.getElementById("player");
+      const stemsGrid = document.getElementById("stemsGrid");
+      const stemTemplate = document.getElementById("stemTemplate");
+      const playButton = document.getElementById("playButton");
+      const pauseButton = document.getElementById("pauseButton");
+      const stopButton = document.getElementById("stopButton");
+      const seekSlider = document.getElementById("seekSlider");
+      const currentTimeLabel = document.getElementById("currentTime");
+      const durationLabel = document.getElementById("duration");
+      const mutedMessage = document.getElementById("mutedMessage");
+      const visualizerCanvas = document.getElementById("visualizer");
+      const visualizerCtx = visualizerCanvas.getContext("2d");
+      const endpointLabel = document.getElementById("endpointLabel");
+      const settingsSheet = document.getElementById("settingsSheet");
+      const stemEndpointInput = document.getElementById("stemEndpointInput");
+      const autoPlayToggle = document.getElementById("autoPlayToggle");
+      const openSettingsButton = document.getElementById("openSettingsButton");
+      const closeSettingsButton = document.getElementById("closeSettingsButton");
+      const saveSettingsButton = document.getElementById("saveSettingsButton");
+      const openAccountButton = document.getElementById("openAccountButton");
+      const cookieBanner = document.getElementById("cookieBanner");
+      const acceptCookiesButton = document.getElementById("acceptCookies");
+      const manageCookiesButton = document.getElementById("manageCookies");
+      const cookieDetails = document.getElementById("cookieDetails");
+      const analyticsToggle = document.getElementById("analyticsToggle");
+      const saveCookiePrefs = document.getElementById("saveCookiePrefs");
+      const saveLibraryButton = document.getElementById("saveLibraryButton");
+      const librarySection = document.getElementById("librarySection");
+      const libraryList = document.getElementById("libraryList");
+      const accountSheet = document.getElementById("accountSheet");
+      const accountForm = document.getElementById("accountForm");
+      const accountEmail = document.getElementById("accountEmail");
+      const accountName = document.getElementById("accountName");
+      const accountPassword = document.getElementById("accountPassword");
+      const accountCode = document.getElementById("accountCode");
+      const sendCodeButton = document.getElementById("sendCodeButton");
+      const accountMessage = document.getElementById("accountMessage");
+      const accountCancel = document.getElementById("accountCancel");
+      const accountTitle = document.getElementById("accountTitle");
+      const accountDescription = document.getElementById("accountDescription");
+      const accountSubmitButton = document.getElementById("accountSubmitButton");
+      const accountSignOutButton = document.getElementById("accountSignOutButton");
+      const masterVolumeInput = document.getElementById("masterVolume");
+      const masterVolumeValue = document.getElementById("masterVolumeValue");
+      const toneHighInput = document.getElementById("toneHigh");
+      const toneLowInput = document.getElementById("toneLow");
+      const toneHighValue = document.getElementById("toneHighValue");
+      const toneLowValue = document.getElementById("toneLowValue");
+      const accountOnlyControls = document.querySelectorAll(".account-only");
+      const FREE_SPLIT_LIMIT = 3;
+      let statusResetTimer = null;
+      let analyserNode = null;
+      let masterGainNode = null;
+      let toneHighNode = null;
+      let toneLowNode = null;
+      let analyserData = null;
+      let visualizerAnimation = null;
+      let codeCooldownTimer = null;
+      saveLibraryButton.disabled = true;
+
+      function setCookie(name, value, days = 365) {
+        const maxAge = days ? `; max-age=${days * 24 * 60 * 60}` : "";
+        const secure = window.location.protocol === "https:" ? "; Secure" : "";
+        document.cookie = `${name}=${encodeURIComponent(value)}${maxAge}; path=/; SameSite=Lax${secure}`;
+      }
+
+      function getCookie(name) {
+        const entry = document.cookie
+          .split("; ")
+          .map((row) => row.split("="))
+          .find(([key]) => key === name);
+        if (!entry) return null;
+        const value = entry[1] ?? "";
+        try {
+          return decodeURIComponent(value);
+        } catch {
+          return value;
+        }
+      }
+
+      function clearCookie(name) {
+        document.cookie = `${name}=; max-age=0; path=/; SameSite=Lax`;
+      }
+
+      function showCookiePrompt() {
+        cookieBanner.hidden = false;
+        cookieBanner.classList.add("show");
+      }
+
+      function hideCookiePrompt() {
+        cookieBanner.classList.remove("show");
+        cookieDetails.classList.remove("show");
+        cookieBanner.hidden = true;
+      }
+
+      const CONSENT_COOKIE = "stemlab-consent";
+      const consentRaw = getCookie(CONSENT_COOKIE);
+      let consent = null;
+      if (consentRaw) {
+        try {
+          consent = JSON.parse(consentRaw);
+          analyticsToggle.checked = Boolean(consent.analytics);
+        } catch (err) {
+          consent = null;
+        }
+      }
+      if (!consent) {
+        showCookiePrompt();
+      }
+
+      let usageCount = Number(getCookie("stemlab-usage") || "0");
+      if (!Number.isFinite(usageCount) || usageCount < 0) {
+        usageCount = 0;
+      }
+      let accountData = null;
+      const accountCookie = getCookie("stemlab-account");
+      if (accountCookie) {
+        try {
+          accountData = JSON.parse(accountCookie);
+        } catch (err) {
+          accountData = null;
+        }
+      }
+      const AUTO_PLAY_COOKIE = "stemlab-autoplay";
+      let autoPlayEnabled = getCookie(AUTO_PLAY_COOKIE) !== "0";
+      autoPlayToggle.checked = autoPlayEnabled;
+      autoPlayToggle.addEventListener("change", () => {
+        autoPlayEnabled = Boolean(autoPlayToggle.checked);
+        setCookie(AUTO_PLAY_COOKIE, autoPlayEnabled ? "1" : "0", 395);
+      });
+
+      acceptCookiesButton.addEventListener("click", () => {
+        consent = { analytics: true };
+        setCookie(CONSENT_COOKIE, JSON.stringify(consent), 395);
+        hideCookiePrompt();
+      });
+
+      manageCookiesButton.addEventListener("click", () => {
+        cookieDetails.classList.toggle("show");
+      });
+
+      saveCookiePrefs.addEventListener("click", () => {
+        consent = { analytics: analyticsToggle.checked };
+        setCookie(CONSENT_COOKIE, JSON.stringify(consent), 395);
+        hideCookiePrompt();
+      });
+
+      function openAccountSheet() {
+        setAccountMessage("");
+        resetCodeButton();
+        accountCode.value = "";
+        accountPassword.value = "";
+        if (hasAccount()) {
+          accountTitle.textContent = "Manage account";
+          accountDescription.textContent = "Update your email or display name, or keep mixing uninterrupted.";
+          accountSubmitButton.textContent = "Update";
+          accountEmail.value = accountData.email || "";
+          accountName.value = accountData.name || "";
+          accountSignOutButton.style.display = "inline-flex";
+        } else {
+          accountTitle.textContent = "Create your account";
+          accountDescription.textContent =
+            "Three free splits. Make a free account to keep mixing and sync your saved sessions.";
+          accountSubmitButton.textContent = "Create account";
+          accountEmail.value = "";
+          accountName.value = "";
+          accountSignOutButton.style.display = "none";
+        }
+        accountSheet.classList.add("show");
+        requestAnimationFrame(() => accountEmail.focus());
+      }
+
+      function closeAccountSheet() {
+        accountSheet.classList.remove("show");
+      }
+
+      function hasAccount() {
+        return Boolean(accountData);
+      }
+
+      function recordUsage() {
+        usageCount += 1;
+        setCookie("stemlab-usage", String(usageCount), 395);
+      }
+
+      function setAccountMessage(message, state = "info") {
+        if (!accountMessage) return;
+        accountMessage.textContent = message || "";
+        accountMessage.classList.remove("error", "success");
+        if (state === "error") {
+          accountMessage.classList.add("error");
+        } else if (state === "success") {
+          accountMessage.classList.add("success");
+        }
+      }
+
+      function hashPassword(value) {
+        return btoa(unescape(encodeURIComponent(value)));
+      }
+
+      function resetCodeButton() {
+        if (codeCooldownTimer) {
+          clearInterval(codeCooldownTimer);
+          codeCooldownTimer = null;
+        }
+        sendCodeButton.disabled = false;
+        sendCodeButton.textContent = "Send code";
+      }
+
+      function startCodeCooldown(seconds = 30) {
+        let remaining = seconds;
+        sendCodeButton.disabled = true;
+        sendCodeButton.textContent = `Resend (${remaining}s)`;
+        codeCooldownTimer = setInterval(() => {
+          remaining -= 1;
+          if (remaining <= 0) {
+            resetCodeButton();
+          } else {
+            sendCodeButton.textContent = `Resend (${remaining}s)`;
+          }
+        }, 1000);
+      }
+
+      sendCodeButton.addEventListener("click", () => {
+        const email = accountEmail.value.trim();
+        if (!email) {
+          setAccountMessage("Enter your email first.", "error");
+          accountEmail.focus();
+          return;
+        }
+        resetCodeButton();
+        sendCodeButton.disabled = true;
+        sendCodeButton.textContent = "Sending...";
+        setAccountMessage("Sending verification code...");
+        fetch(resolveApiPath("/auth/request-code"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        })
+          .then((response) => {
+            if (!response.ok) {
+              return response.text().then((text) => {
+                throw new Error(text || response.statusText);
+              });
+            }
+            return response.json();
+          })
+          .then(() => {
+            setAccountMessage("Code sent. Check your email (and the server log).", "success");
+            startCodeCooldown();
+          })
+          .catch((error) => {
+            setAccountMessage(`Could not send code: ${error.message}`, "error");
+            resetCodeButton();
+          });
+      });
+
+      function canProcess() {
+        if (usageCount >= FREE_SPLIT_LIMIT && !hasAccount()) {
+          openAccountSheet();
+          setStatus("Create an account to keep using Stem Lab.", null);
+          return false;
+        }
+        return true;
+      }
+
+      function updateFeatureLocks() {
+        accountOnlyControls.forEach((control) => {
+          const input = control.querySelector("input");
+          const indicator = control.querySelector(".lock-indicator");
+          if (hasAccount()) {
+            control.classList.remove("locked");
+            if (input) input.disabled = false;
+            if (indicator) indicator.textContent = "";
+          } else {
+            control.classList.add("locked");
+            if (input) input.disabled = true;
+            if (indicator) indicator.textContent = "🔒 Account";
+          }
+        });
+
+        if (!hasAccount()) {
+          saveLibraryButton.disabled = true;
+          librarySection.classList.add("locked");
+        } else {
+          if (stems.length) {
+            saveLibraryButton.disabled = false;
+          }
+          librarySection.classList.remove("locked");
+        }
+        if (openAccountButton) {
+          openAccountButton.textContent = hasAccount()
+            ? accountData?.name?.trim() || "Account"
+            : "Sign in";
+        }
+        if (accountSignOutButton) {
+          accountSignOutButton.style.display = hasAccount() ? "inline-flex" : "none";
+        }
+        updateMixReadouts();
+      }
+
+      function formatDb(value) {
+        const rounded = Math.round(value * 10) / 10;
+        const prefix = rounded > 0 ? "+" : "";
+        return `${prefix}${rounded.toFixed(1)} dB`;
+      }
+
+      function updateMixReadouts() {
+        masterVolumeValue.textContent = `${Math.round(Number(masterVolumeInput.value) * 100)}%`;
+        if (hasAccount()) {
+          toneHighValue.textContent = formatDb(Number(toneHighInput.value));
+          toneLowValue.textContent = formatDb(Number(toneLowInput.value));
+        } else {
+          toneHighValue.textContent = "--";
+          toneLowValue.textContent = "--";
+        }
+      }
+
+      masterVolumeInput.addEventListener("input", () => {
+        updateMixReadouts();
+        if (masterGainNode && audioContext) {
+          masterGainNode.gain.setTargetAtTime(Number(masterVolumeInput.value), audioContext.currentTime, 0.01);
+        }
+      });
+
+      toneHighInput.addEventListener("input", () => {
+        if (!hasAccount()) {
+          updateMixReadouts();
+          openAccountSheet();
+          return;
+        }
+        updateMixReadouts();
+        if (toneHighNode && audioContext) {
+          toneHighNode.gain.setTargetAtTime(Number(toneHighInput.value), audioContext.currentTime, 0.01);
+        }
+      });
+
+      toneLowInput.addEventListener("input", () => {
+        if (!hasAccount()) {
+          updateMixReadouts();
+          openAccountSheet();
+          return;
+        }
+        updateMixReadouts();
+        if (toneLowNode && audioContext) {
+          toneLowNode.gain.setTargetAtTime(Number(toneLowInput.value), audioContext.currentTime, 0.01);
+        }
+      });
+
+      openAccountButton.addEventListener("click", () => {
+        openAccountSheet();
+      });
+
+      accountForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const email = accountEmail.value.trim();
+        const name = accountName.value.trim();
+        const password = accountPassword.value;
+        const code = accountCode.value.trim();
+        if (!email) {
+          setAccountMessage("Email is required.", "error");
+          accountEmail.focus();
+          return;
+        }
+        if (password.length < 8) {
+          setAccountMessage("Password must be at least 8 characters.", "error");
+          accountPassword.focus();
+          return;
+        }
+        if (!code) {
+          setAccountMessage("Enter the verification code we sent.", "error");
+          accountCode.focus();
+          return;
+        }
+        setAccountMessage("Verifying code...");
+        const passwordHash = hashPassword(password);
+        let verifyResponse;
+        try {
+          const response = await fetch(resolveApiPath("/auth/verify"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, code, passwordHash, name }),
+          });
+          if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text || response.statusText);
+          }
+          verifyResponse = await response.json();
+        } catch (error) {
+          setAccountMessage(`Verification failed: ${error.message}`, "error");
+          resetCodeButton();
+          return;
+        }
+        setAccountMessage("Verified!", "success");
+        accountData = {
+          email: verifyResponse.email || email,
+          name: verifyResponse.name ?? name,
+          passwordHash,
+          createdAt: verifyResponse.createdAt || accountData?.createdAt || new Date().toISOString(),
+          updatedAt: verifyResponse.updatedAt || new Date().toISOString(),
+        };
+        setCookie("stemlab-account", JSON.stringify(accountData), 395);
+        accountCode.value = "";
+        accountPassword.value = "";
+        closeAccountSheet();
+        setStatus("Account ready. Enjoy unlimited mixes.", null);
+        statusResetTimer = setTimeout(() => setStatus("", null), 2400);
+        updateFeatureLocks();
+        refreshLibrary();
+      });
+
+      accountCancel.addEventListener("click", () => {
+        closeAccountSheet();
+      });
+
+      accountSignOutButton.addEventListener("click", () => {
+        accountData = null;
+        clearCookie("stemlab-account");
+        resetCodeButton();
+        setAccountMessage("Signed out.", "success");
+        updateFeatureLocks();
+        refreshLibrary();
+        closeAccountSheet();
+        setStatus("Signed out.", null);
+        statusResetTimer = setTimeout(() => setStatus("", null), 2000);
+      });
+
+      accountSheet.addEventListener("click", (event) => {
+        if (event.target === accountSheet) {
+          closeAccountSheet();
+        }
+      });
+
+      const storedEndpoint = getCookie("stemEndpoint");
+      const fallbackEndpoint =
+        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+          ? "http://127.0.0.1:5001/api/separate"
+          : `${window.location.origin.replace(/\/$/, "")}/api/separate`;
+      const defaultEndpoint = window.STEM_ENDPOINT || storedEndpoint || fallbackEndpoint;
+      let stemEndpoint = defaultEndpoint;
+      let currentStemSources = [];
+      let currentSessionTitle = "";
+
+      function applyEndpoint(nextEndpoint, { silent = false } = {}) {
+        stemEndpoint = nextEndpoint;
+        endpointLabel.textContent = stemEndpoint;
+        stemEndpointInput.value = stemEndpoint;
+        setCookie("stemEndpoint", stemEndpoint, 395);
+        if (!silent) {
+          setStatus(`Endpoint updated: ${stemEndpoint}`, null);
+          statusResetTimer = setTimeout(() => setStatus("", null), 2400);
+        }
+        refreshLibrary();
+      }
+
+      applyEndpoint(stemEndpoint, { silent: true });
+
+      function openSettingsSheet() {
+        stemEndpointInput.value = stemEndpoint;
+        autoPlayToggle.checked = autoPlayEnabled;
+        settingsSheet.classList.add("show");
+        requestAnimationFrame(() => stemEndpointInput.focus({ preventScroll: true }));
+      }
+
+      function closeSettingsSheet() {
+        settingsSheet.classList.remove("show");
+      }
+
+      function resolveApiPath(pathname) {
+        try {
+          const url = new URL(stemEndpoint);
+          const segments = url.pathname.split("/");
+          segments.pop();
+          const basePath = segments.join("/") || "/";
+          const normalizedPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
+          const finalPath = (basePath.endsWith("/") ? basePath.slice(0, -1) : basePath) + normalizedPath;
+          url.pathname = finalPath.replace(/\/+/g, "/");
+          url.search = "";
+          return url.toString();
+        } catch (error) {
+          console.warn("Could not resolve API path", error);
+          return pathname;
+        }
+      }
+
+      async function refreshLibrary() {
+        if (!hasAccount()) {
+          renderLibrary([]);
+          return;
+        }
+        try {
+          const response = await fetch(resolveApiPath("/library"));
+          if (!response.ok) throw new Error(await response.text());
+          const data = await response.json();
+          const items = Array.isArray(data.items) ? data.items : [];
+          renderLibrary(items);
+        } catch (error) {
+          console.warn("Could not load library", error);
+          renderLibrary([]);
+        }
+      }
+
+      function renderLibrary(items) {
+        libraryList.innerHTML = "";
+        if (!hasAccount()) {
+          librarySection.classList.add("locked");
+          const msg = document.createElement("p");
+          msg.className = "library-empty";
+          msg.textContent = "Sign in to access your saved sessions.";
+          libraryList.appendChild(msg);
+          return;
+        }
+        librarySection.classList.remove("locked");
+        if (!items.length) {
+          const empty = document.createElement("p");
+          empty.className = "library-empty";
+          empty.textContent = "No saved sessions yet.";
+          libraryList.appendChild(empty);
+          return;
+        }
+        items
+          .slice()
+          .sort((a, b) => (a.createdAt || "").localeCompare(b.createdAt || ""))
+          .reverse()
+          .forEach((item) => {
+            const row = document.createElement("article");
+            row.className = "library-item";
+
+            const meta = document.createElement("div");
+            meta.className = "meta";
+
+            const title = document.createElement("h3");
+            title.textContent = item.title || "Session";
+            meta.appendChild(title);
+
+            const created = document.createElement("p");
+            created.textContent = item.createdAt
+              ? new Date(item.createdAt).toLocaleString()
+              : "Stored";
+            meta.appendChild(created);
+
+            const actions = document.createElement("div");
+            actions.className = "library-actions";
+
+            const loadButton = document.createElement("button");
+            loadButton.type = "button";
+            loadButton.textContent = "Load";
+            loadButton.addEventListener("click", () => loadLibraryItem(item.id));
+            actions.appendChild(loadButton);
+
+            const link = document.createElement("a");
+            link.href = resolveApiPath(`/library/${item.id}/bundle`);
+            link.textContent = "Download";
+            link.target = "_blank";
+            link.rel = "noopener";
+            actions.appendChild(link);
+
+            row.append(meta, actions);
+            libraryList.appendChild(row);
+          });
+      }
+
+      openSettingsButton.addEventListener("click", openSettingsSheet);
+      closeSettingsButton.addEventListener("click", closeSettingsSheet);
+      settingsSheet.addEventListener("click", (event) => {
+        if (event.target === settingsSheet) {
+          closeSettingsSheet();
+        }
+      });
+
+      saveSettingsButton.addEventListener("click", () => {
+        const value = stemEndpointInput.value.trim();
+        if (!value) {
+          stemEndpointInput.focus();
+          return;
+        }
+        applyEndpoint(value);
+        autoPlayEnabled = Boolean(autoPlayToggle.checked);
+        setCookie("stemlab-autoplay", autoPlayEnabled ? "1" : "0", 395);
+        closeSettingsSheet();
+        updateMixReadouts();
+      });
+
+      stemEndpointInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          saveSettingsButton.click();
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && settingsSheet.classList.contains("show")) {
+          event.preventDefault();
+          closeSettingsSheet();
+        }
+      });
+
+      const stemPresets = [
+        {
+          id: "vocals",
+          name: "Vocals",
+          defaultGain: 0.95,
+          sourceKey: "vocals",
+        },
+        {
+          id: "drums",
+          name: "Drums",
+          defaultGain: 0.95,
+          sourceKey: "drums",
+        },
+        {
+          id: "bass",
+          name: "Bass",
+          defaultGain: 0.95,
+          sourceKey: "bass",
+        },
+        {
+          id: "other",
+          name: "Other",
+          defaultGain: 0.9,
+          sourceKey: "other",
+        },
+      ];
+
+      let audioBuffer = null;
+      let stems = [];
+      let playbackSources = [];
+      let audioContext = null;
+      let isPlaying = false;
+      let playbackStart = 0;
+      let playbackOffset = 0;
+      let rafId = null;
+
+      function formatTime(seconds) {
+        if (Number.isNaN(seconds)) return "0:00";
+        const minutes = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60)
+          .toString()
+          .padStart(2, "0");
+        return `${minutes}:${secs}`;
+      }
+
+      function setStatus(message, progress = null) {
+        if (statusResetTimer) {
+          clearTimeout(statusResetTimer);
+          statusResetTimer = null;
+        }
+        if (!message) {
+          statusLabel.textContent = "";
+          statusBox.classList.remove("show");
+          progressFill.style.width = "0";
+          return;
+        }
+        statusLabel.textContent = message;
+        statusBox.classList.add("show");
+        if (progress === null) {
+          progressFill.style.width = "0";
+        } else {
+          progressFill.style.width = `${Math.min(100, Math.max(progress, 0))}%`;
+        }
+      }
+
+      async function handleFiles(files) {
+        const file = files[0];
+        if (!file) return;
+        if (!canProcess()) {
+          fileInput.value = "";
+          return;
+        }
+
+        currentSessionTitle = file.name;
+        currentStemSources = [];
+        saveLibraryButton.disabled = true;
+
+        let decodeContext = null;
+        try {
+          setStatus(`Uploading ${file.name}`, 12);
+          const arrayBuffer = await file.arrayBuffer();
+          decodeContext = new AudioContext();
+          const decoded = await decodeContext.decodeAudioData(arrayBuffer.slice(0));
+          audioBuffer = decoded;
+          const endpoint = stemEndpoint;
+          setStatus(`Processing via ${endpoint}`, 32);
+          const stemPayload = await requestStemService(file, endpoint);
+          setStatus("Preparing stems...", 68);
+          stems = await prepareStemsFromPayload(stemPayload, decodeContext);
+          await decodeContext.close();
+          decodeContext = null;
+          setStatus("Stems ready — press play to listen.", 100);
+          buildStemUI();
+          initPlayer();
+          statusResetTimer = setTimeout(() => setStatus("", null), 4000);
+          recordUsage();
+          if (autoPlayEnabled) {
+            startPlayback().catch((error) => console.error(error));
+          }
+        } catch (error) {
+          console.error(error);
+          setStatus(`Could not process file: ${error.message}`);
+        } finally {
+          if (decodeContext && decodeContext.state !== "closed") {
+            try {
+              await decodeContext.close();
+            } catch (closeError) {
+              console.warn("Could not close decode context", closeError);
+            }
+          }
+        }
+      }
+
+      async function requestStemService(file, endpoint) {
+        const formData = new FormData();
+        formData.append("file", file, file.name);
+        formData.append("model", "spleeter:4stems");
+
+        const response = await fetch(endpoint, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          let details = "";
+          try {
+            details = await response.text();
+          } catch (err) {}
+          const suffix = details ? ` — ${details.slice(0, 120)}` : "";
+          throw new Error(`Stem service error (${response.status} ${response.statusText})${suffix}`);
+        }
+
+        const payload = await response.json();
+        if (!payload || !payload.stems) {
+          throw new Error("Stem service response missing `stems`.");
+        }
+        return payload.stems;
+      }
+
+      async function prepareStemsFromPayload(stemPayload, decodeContext) {
+        const prepared = [];
+        currentStemSources = [];
+        for (const preset of stemPresets) {
+          const key = preset.sourceKey || preset.id;
+          let stemValue = stemPayload[key];
+          if (!stemValue && key === "other" && stemPayload.accompaniment) {
+            stemValue = stemPayload.accompaniment;
+          }
+          if (!stemValue) {
+            console.warn(`Stem service did not return "${key}" stem.`);
+            continue;
+          }
+          const parsed = parseStemData(stemValue);
+          const bytes = parsed.bytes;
+          const bufferCopy = arrayBufferFromBytes(bytes);
+          const decoded = await decodeContext.decodeAudioData(bufferCopy);
+          const blob = new Blob([bytes], { type: parsed.mimeType });
+          prepared.push({
+            ...preset,
+            buffer: decoded,
+            url: URL.createObjectURL(blob),
+            mimeType: parsed.mimeType,
+            gain: preset.defaultGain ?? 0.9,
+            dataUrl: parsed.dataUrl,
+          });
+          currentStemSources.push({ id: preset.id, dataUrl: parsed.dataUrl });
+        }
+        if (!prepared.length) {
+          throw new Error("Stem service returned no usable stems.");
+        }
+        return prepared;
+      }
+
+      function parseStemData(input) {
+        if (typeof input !== "string") {
+          throw new Error("Unexpected stem payload format.");
+        }
+        if (input.startsWith("data:")) {
+          const match = /^data:([^;]+);base64,(.+)$/i.exec(input);
+          if (!match) {
+            throw new Error("Unsupported data URL format from stem service.");
+          }
+          const mimeType = match[1] || "audio/wav";
+          const base64 = match[2];
+          return { mimeType, bytes: base64ToBytes(base64), dataUrl: `data:${mimeType};base64,${base64}` };
+        }
+        const normalized = input.replace(/[^A-Za-z0-9+/=]/g, "");
+        const bytes = base64ToBytes(normalized);
+        return { mimeType: "audio/wav", bytes, dataUrl: `data:audio/wav;base64,${normalized}` };
+      }
+
+      function base64ToBytes(base64) {
+        const normalized = base64.replace(/[^A-Za-z0-9+/=]/g, "");
+        const binary = atob(normalized);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes;
+      }
+
+      function arrayBufferFromBytes(bytes) {
+        return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+      }
+
+      function buildStemUI() {
+        player.classList.add("show");
+        stemsGrid.innerHTML = "";
+        stems.forEach((stem) => {
+          const node = stemTemplate.content.firstElementChild.cloneNode(true);
+          node.querySelector("h3").textContent = stem.name;
+          const valueLabel = node.querySelector(".value");
+          const slider = node.querySelector("input[type='range']");
+          const downloadButton = node.querySelector(".download");
+          slider.value = stem.gain;
+          valueLabel.textContent = `${Math.round(stem.gain * 100)}%`;
+          slider.addEventListener("input", (event) => {
+            stem.gain = Number(event.target.value);
+            valueLabel.textContent = `${Math.round(stem.gain * 100)}%`;
+            updateStemGain(stem.id, stem.gain);
+            toggleMutedMessage();
+          });
+          downloadButton.addEventListener("click", () => {
+            const anchor = document.createElement("a");
+            anchor.href = stem.url;
+            anchor.download = `${stem.id}-stem.wav`;
+            anchor.click();
+          });
+          stemsGrid.appendChild(node);
+        });
+        toggleMutedMessage();
+        saveLibraryButton.disabled = !hasAccount();
+        updateFeatureLocks();
+      }
+
+      saveLibraryButton.addEventListener("click", async () => {
+        if (!hasAccount()) {
+          openAccountSheet();
+          return;
+        }
+        if (!currentStemSources.length) {
+          return;
+        }
+        const payload = {
+          title: (currentSessionTitle || "Stem session").replace(/\.[^/.]+$/, ""),
+          stems: {},
+        };
+        currentStemSources.forEach(({ id, dataUrl }) => {
+          if (dataUrl) {
+            payload.stems[id] = dataUrl;
+          }
+        });
+        if (!Object.keys(payload.stems).length) {
+          setStatus("Nothing to save yet.", null);
+          statusResetTimer = setTimeout(() => setStatus("", null), 2000);
+          return;
+        }
+        saveLibraryButton.disabled = true;
+        try {
+          setStatus("Saving session...", null);
+          const response = await fetch(resolveApiPath("/library"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (!response.ok) {
+            throw new Error(await response.text());
+          }
+          await response.json();
+          setStatus("Session saved to your library.", null);
+          statusResetTimer = setTimeout(() => setStatus("", null), 2400);
+          refreshLibrary();
+        } catch (error) {
+          console.error(error);
+          setStatus(`Could not save: ${error.message}`, null);
+        } finally {
+          saveLibraryButton.disabled = false;
+        }
+      });
+
+      async function loadLibraryItem(itemId) {
+        if (!hasAccount()) {
+          openAccountSheet();
+          return;
+        }
+        setStatus("Loading session...", null);
+        try {
+          const response = await fetch(resolveApiPath(`/library/${itemId}`));
+          if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text || response.statusText);
+          }
+          const data = await response.json();
+          const stemsPayload = data.stems || {};
+          const decodeContext = new AudioContext();
+          const loaded = [];
+          currentStemSources = [];
+          for (const preset of stemPresets) {
+            const key = preset.sourceKey || preset.id;
+            const stemValue = stemsPayload[key];
+            if (!stemValue) continue;
+            const parsed = parseStemData(stemValue);
+            const bufferCopy = arrayBufferFromBytes(parsed.bytes);
+            const decoded = await decodeContext.decodeAudioData(bufferCopy.slice(0));
+            const blob = new Blob([parsed.bytes], { type: parsed.mimeType });
+            loaded.push({
+              ...preset,
+              buffer: decoded,
+              url: URL.createObjectURL(blob),
+              mimeType: parsed.mimeType,
+              gain: preset.defaultGain ?? 0.9,
+              dataUrl: parsed.dataUrl,
+            });
+            currentStemSources.push({ id: preset.id, dataUrl: parsed.dataUrl });
+          }
+          await decodeContext.close();
+          if (!loaded.length) {
+            throw new Error("No stems found in this session.");
+          }
+          reset();
+          stems = loaded;
+          audioBuffer = loaded[0].buffer;
+          currentSessionTitle = data.title || loaded[0].name || "Session";
+          buildStemUI();
+          initPlayer();
+          updateFeatureLocks();
+          setStatus(`Loaded "${currentSessionTitle}" from library.`, null);
+          statusResetTimer = setTimeout(() => setStatus("", null), 2400);
+          if (autoPlayEnabled) {
+            startPlayback().catch((error) => console.error(error));
+          }
+        } catch (error) {
+          console.error(error);
+          setStatus(`Could not load session: ${error.message}`, null);
+        }
+      }
+
+      function initPlayer() {
+        durationLabel.textContent = formatTime(audioBuffer.duration);
+        seekSlider.value = 0;
+        seekSlider.disabled = false;
+        if (isPlaying) {
+          stopPlayback();
+        }
+        updateCurrentTime(0);
+      }
+
+      function ensureContext() {
+        if (!audioContext || audioContext.state === "closed") {
+          audioContext = new AudioContext();
+        }
+        const now = audioContext.currentTime || 0;
+        if (!masterGainNode) {
+          masterGainNode = audioContext.createGain();
+        }
+        if (!toneLowNode) {
+          toneLowNode = audioContext.createBiquadFilter();
+          toneLowNode.type = "lowshelf";
+          toneLowNode.frequency.value = 200;
+        }
+        if (!toneHighNode) {
+          toneHighNode = audioContext.createBiquadFilter();
+          toneHighNode.type = "highshelf";
+          toneHighNode.frequency.value = 4000;
+        }
+        if (!analyserNode) {
+          analyserNode = audioContext.createAnalyser();
+          analyserNode.fftSize = 2048;
+          analyserNode.smoothingTimeConstant = 0.7;
+          analyserData = new Uint8Array(analyserNode.frequencyBinCount);
+        }
+        masterGainNode.gain.setTargetAtTime(Number(masterVolumeInput.value), now, 0.01);
+        toneLowNode.gain.setTargetAtTime(Number(toneLowInput.value), now, 0.01);
+        toneHighNode.gain.setTargetAtTime(Number(toneHighInput.value), now, 0.01);
+        masterGainNode.disconnect();
+        toneLowNode.disconnect();
+        toneHighNode.disconnect();
+        analyserNode.disconnect();
+        masterGainNode.connect(toneLowNode);
+        toneLowNode.connect(toneHighNode);
+        toneHighNode.connect(analyserNode);
+        analyserNode.connect(audioContext.destination);
+        resizeVisualizer();
+        return audioContext;
+      }
+
+      function resizeVisualizer() {
+        if (!visualizerCanvas) return;
+        const dpr = window.devicePixelRatio || 1;
+        const rect = visualizerCanvas.getBoundingClientRect();
+        const width = Math.round(rect.width * dpr);
+        const height = Math.round(rect.height * dpr);
+        if (visualizerCanvas.width !== width || visualizerCanvas.height !== height) {
+          visualizerCanvas.width = width;
+          visualizerCanvas.height = height;
+        }
+      }
+
+      function clearVisualizer() {
+        if (!visualizerCtx) return;
+        visualizerCtx.clearRect(0, 0, visualizerCanvas.width, visualizerCanvas.height);
+      }
+
+      function stopVisualizer() {
+        if (visualizerAnimation) {
+          cancelAnimationFrame(visualizerAnimation);
+          visualizerAnimation = null;
+        }
+        clearVisualizer();
+      }
+
+      function startVisualizer() {
+        if (!analyserNode || !analyserData || !visualizerCtx) return;
+        if (visualizerAnimation) {
+          cancelAnimationFrame(visualizerAnimation);
+          visualizerAnimation = null;
+        }
+        resizeVisualizer();
+        const { width, height } = visualizerCanvas;
+        const barCount = 64;
+        const step = Math.max(1, Math.floor(analyserData.length / barCount));
+
+        const render = () => {
+          analyserNode.getByteFrequencyData(analyserData);
+          visualizerCtx.fillStyle = "#ffffff";
+          visualizerCtx.fillRect(0, 0, width, height);
+          const barWidth = width / barCount;
+          for (let i = 0; i < barCount; i++) {
+            const value = analyserData[i * step] / 255;
+            const barHeight = value * height;
+            const x = i * barWidth;
+            visualizerCtx.fillStyle = "#111111";
+            visualizerCtx.fillRect(x, height - barHeight, barWidth * 0.6, barHeight);
+          }
+          visualizerAnimation = requestAnimationFrame(render);
+        };
+        render();
+      }
+
+      async function startPlayback() {
+        if (!audioBuffer) return;
+        if (isPlaying) return;
+
+        const ctx = ensureContext();
+        if (ctx.state === "suspended") {
+          await ctx.resume();
+        }
+        playbackSources = [];
+        stems.forEach((stem) => {
+          const gainNode = ctx.createGain();
+          gainNode.gain.value = stem.gain;
+          const source = ctx.createBufferSource();
+          source.buffer = stem.buffer;
+          source.connect(gainNode);
+          if (masterGainNode) {
+            gainNode.connect(masterGainNode);
+          } else {
+            gainNode.connect(ctx.destination);
+          }
+          source.start(0, playbackOffset);
+          playbackSources.push({ stem, source, gainNode });
+        });
+        playbackStart = ctx.currentTime - playbackOffset;
+        isPlaying = true;
+        monitorTimeline();
+        startVisualizer();
+      }
+
+      function pausePlayback() {
+        if (!isPlaying) return;
+        playbackOffset = getCurrentPlaybackTime();
+        stopSources();
+        isPlaying = false;
+      }
+
+      function stopPlayback() {
+        playbackOffset = 0;
+        stopSources();
+        isPlaying = false;
+        updateCurrentTime(0);
+        seekSlider.value = 0;
+      }
+
+      function stopSources() {
+        playbackSources.forEach(({ source }) => {
+          try {
+            source.stop();
+          } catch (err) {}
+        });
+        playbackSources = [];
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        stopVisualizer();
+      }
+
+      function monitorTimeline() {
+        updateCurrentTime(getCurrentPlaybackTime());
+        if (isPlaying) {
+          rafId = requestAnimationFrame(monitorTimeline);
+        }
+      }
+
+      function updateCurrentTime(time) {
+        currentTimeLabel.textContent = formatTime(time);
+        const progress = audioBuffer ? time / audioBuffer.duration : 0;
+        seekSlider.value = Number.isFinite(progress) ? Math.min(Math.max(progress, 0), 1) : 0;
+      }
+
+      function getCurrentPlaybackTime() {
+        if (!audioContext) return playbackOffset;
+        const now = audioContext.currentTime;
+        const position = now - playbackStart;
+        if (position >= audioBuffer.duration) {
+          stopPlayback();
+          return audioBuffer.duration;
+        }
+        return position;
+      }
+
+      function seekToPosition(ratio) {
+        if (!audioBuffer) return;
+        const clamped = Math.min(Math.max(ratio, 0), 1);
+        playbackOffset = clamped * audioBuffer.duration;
+        if (isPlaying) {
+          stopSources();
+          isPlaying = false;
+          startPlayback().catch((error) => console.error(error));
+        } else {
+          updateCurrentTime(playbackOffset);
+        }
+      }
+
+      function updateStemGain(stemId, value) {
+        const playback = playbackSources.find(({ stem }) => stem.id === stemId);
+        if (playback && audioContext) {
+          playback.gainNode.gain.setTargetAtTime(value, audioContext.currentTime, 0.015);
+        }
+      }
+
+      function toggleMutedMessage() {
+        const audibleStem = stems.some((stem) => stem.gain > 0.01);
+        mutedMessage.classList.toggle("show", stems.length > 0 && !audibleStem);
+      }
+
+      function reset() {
+        setStatus("", null);
+        stems.forEach((stem) => {
+          if (stem.url) URL.revokeObjectURL(stem.url);
+        });
+        stems = [];
+        currentStemSources = [];
+        currentSessionTitle = "";
+        audioBuffer = null;
+        playbackOffset = 0;
+        stopPlayback();
+        stemsGrid.innerHTML = "";
+        player.classList.remove("show");
+        mutedMessage.classList.remove("show");
+        seekSlider.value = 0;
+        seekSlider.disabled = true;
+        durationLabel.textContent = "0:00";
+        currentTimeLabel.textContent = "0:00";
+        if (audioContext && audioContext.state !== "closed") {
+          audioContext.close().catch(() => {});
+        }
+        audioContext = null;
+        saveLibraryButton.disabled = true;
+        updateFeatureLocks();
+      }
+
+      dropZone.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        dropZone.classList.add("dragging");
+      });
+
+      dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragging"));
+      dropZone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        dropZone.classList.remove("dragging");
+        reset();
+        handleFiles(event.dataTransfer.files);
+      });
+
+      fileInput.addEventListener("change", (event) => {
+        reset();
+        handleFiles(event.target.files);
+      });
+
+      playButton.addEventListener("click", () => {
+        if (!audioBuffer) return;
+        startPlayback().catch((error) => console.error(error));
+      });
+
+      pauseButton.addEventListener("click", () => {
+        pausePlayback();
+      });
+
+      stopButton.addEventListener("click", () => {
+        stopPlayback();
+      });
+
+      seekSlider.addEventListener("input", (event) => {
+        seekToPosition(Number(event.target.value));
+      });
+
+      window.addEventListener("beforeunload", () => {
+        stems.forEach((stem) => stem.url && URL.revokeObjectURL(stem.url));
+        if (audioContext) {
+          audioContext.close();
+        }
+      });
+
+      refreshLibrary();
+      updateFeatureLocks();
+      window.addEventListener("resize", resizeVisualizer);
+      resizeVisualizer();
+    </script>
+  </body>
+</html>

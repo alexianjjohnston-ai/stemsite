@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+accounts.json
+library/
+
+pretrained_models/

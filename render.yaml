@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: stemlab-api
+    env: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: STEMLAB_SMTP_HOST
+        sync: false
+      - key: STEMLAB_SMTP_PORT
+        sync: false
+      - key: STEMLAB_SMTP_USER
+        sync: false
+      - key: STEMLAB_SMTP_PASS
+        sync: false
+      - key: STEMLAB_EMAIL_FROM
+        sync: false
+      - key: STEMLAB_SMTP_USE_TLS
+        sync: false
+  - type: static
+    name: stemlab-app
+    env: static
+    buildCommand: ""
+    staticPublishPath: .
